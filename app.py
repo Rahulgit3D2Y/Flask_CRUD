@@ -6,6 +6,7 @@ from datetime import datetime
 # App Setup
 app=Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"]="sqlite:///dataase.db"
+app.config["SQLALCHEMY_TRACK_MODIFICATION"]=False
 db=SQLAlchemy(app)
 
 #DATA CLASS
@@ -17,6 +18,9 @@ class MyTask(db.Model):
 
    def __repr__(self)-> str:
       return f"Task{self.id}"
+   
+with app.app_context():
+      db.create_all()
 
 # Routes
 @app.route("/",methods=["POST","GET"])
@@ -37,10 +41,32 @@ def index():
      tasks=MyTask.query.order_by(MyTask.created).all()
      return  render_template('index.html',tasks=tasks)
 
+#DELETE AN ITEM
+@app.route("/delete/<int:id>")
+def delete(id:int):
+   delete_task=MyTask.query.get_or_404(id)
+   try:
+      db.session.delete(delete_task)
+      db.session.commit()
+      return redirect("/")
+   except Exception as e:
+      return f"Error{e}"
 
-if __name__ in "__main__":
-   with app.app_context():
-      db.create_all()
+#UPDATE AN ITEM
+@app.route("/edit/<int:id>",methods=["GET","POST"])
+def edit(id:int):
+   task=MyTask.query.get_or_404(id)
+   if request.method=="POST":
+      task.content=request.form['content']
+      try:
+         db.session.commit()
+         return redirect("/")
+      except Exception as e:
+         return f"Error{e}"
+   else:
+      return render_template('edit.html',task=task)
 
 
+if __name__ == "__main__":
+   
    app.run(debug=True) 
